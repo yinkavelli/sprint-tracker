@@ -180,7 +180,9 @@ export default function SprintTracker() {
   const [checked, setChecked] = useState(saved?.checked || initChecked());
   const [startDate, setStartDate] = useState(saved?.startDate || "");
   const [expandedMonth, setExpandedMonth] = useState(null);
-  const [showSettings, setShowSettings] = useState(!saved?.startDate);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [btnHover, setBtnHover] = useState("");
 
   useEffect(() => {
     saveState({ checked, startDate });
@@ -249,11 +251,18 @@ export default function SprintTracker() {
   }
 
   const resetAll = () => {
-    if (confirm("Reset all progress? This cannot be undone.")) {
-      setChecked(initChecked());
-      setStartDate("");
-      setShowSettings(true);
-    }
+    setShowResetConfirm(true);
+  };
+
+  const confirmReset = () => {
+    setChecked(initChecked());
+    setStartDate("");
+    setShowResetConfirm(false);
+    setExpandedMonth(null);
+  };
+
+  const toggleMonth = (month) => {
+    setExpandedMonth((prev) => (prev === month ? null : month));
   };
 
   const overallTime = getOverallTimeProgress();
@@ -266,6 +275,47 @@ export default function SprintTracker() {
       color: "#e8e6e1",
       fontFamily: "'DM Sans', 'Segoe UI', system-ui, sans-serif",
     }}>
+
+      {/* ── Custom Reset Confirmation Modal ── */}
+      {showResetConfirm && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            background: "#1a1a2e", border: "1px solid rgba(255,71,87,0.3)",
+            borderRadius: 12, padding: "28px 32px", maxWidth: 360, width: "90%",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>↺</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#e8e6e1", marginBottom: 8 }}>
+              Reset all progress?
+            </div>
+            <div style={{ fontSize: 13, color: "#8a8a9a", marginBottom: 24, lineHeight: 1.5 }}>
+              This will clear all checked tasks and your start date. This cannot be undone.
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                style={{
+                  padding: "9px 22px", borderRadius: 7, fontSize: 13, cursor: "pointer",
+                  background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+                  color: "#e8e6e1", transition: "all 0.2s",
+                }}
+              >Cancel</button>
+              <button
+                onClick={confirmReset}
+                style={{
+                  padding: "9px 22px", borderRadius: 7, fontSize: 13, cursor: "pointer",
+                  background: "rgba(255,71,87,0.15)", border: "1px solid rgba(255,71,87,0.4)",
+                  color: "#ff4757", fontWeight: 600, transition: "all 0.2s",
+                }}
+              >Reset Everything</button>
+            </div>
+          </div>
+        </div>
+      )}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -295,14 +345,26 @@ export default function SprintTracker() {
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowSettings(!showSettings)} style={{
-                background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)",
-                color: "#c9a84c", padding: "6px 14px", borderRadius: 6, fontSize: 12, cursor: "pointer",
-              }}>⚙️ Settings</button>
-              <button onClick={resetAll} style={{
-                background: "rgba(255,71,87,0.1)", border: "1px solid rgba(255,71,87,0.2)",
-                color: "#ff4757", padding: "6px 14px", borderRadius: 6, fontSize: 12, cursor: "pointer",
-              }}>↺ Reset</button>
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                onMouseEnter={() => setBtnHover("settings")}
+                onMouseLeave={() => setBtnHover("")}
+                style={{
+                  background: btnHover === "settings" ? "rgba(201,168,76,0.28)" : "rgba(201,168,76,0.15)",
+                  border: "1px solid rgba(201,168,76,0.3)",
+                  color: "#c9a84c", padding: "6px 14px", borderRadius: 6, fontSize: 12,
+                  cursor: "pointer", transition: "all 0.2s",
+                }}>⚙️ Settings</button>
+              <button
+                onClick={resetAll}
+                onMouseEnter={() => setBtnHover("reset")}
+                onMouseLeave={() => setBtnHover("")}
+                style={{
+                  background: btnHover === "reset" ? "rgba(255,71,87,0.22)" : "rgba(255,71,87,0.1)",
+                  border: "1px solid rgba(255,71,87,0.35)",
+                  color: "#ff4757", padding: "6px 14px", borderRadius: 6, fontSize: 12,
+                  cursor: "pointer", transition: "all 0.2s",
+                }}>↺ Reset</button>
             </div>
           </div>
 
@@ -340,8 +402,13 @@ export default function SprintTracker() {
                 <div key={key} style={{
                   padding: "8px 12px", borderRadius: 6,
                   background: `${meta.color}10`, border: `1px solid ${meta.color}30`,
+                  minWidth: 0,
                 }}>
-                  <div style={{ fontSize: 10, color: meta.color, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  <div style={{
+                    fontSize: 10, color: meta.color, fontWeight: 600,
+                    textTransform: "uppercase", letterSpacing: 0.5,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}>
                     {meta.icon} {meta.label}
                   </div>
                   <div style={{ marginTop: 6, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
@@ -360,14 +427,19 @@ export default function SprintTracker() {
 
       {/* Timeline */}
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 24px 60px" }}>
-        {/* Mini month nav */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+        {/* Mini month nav — horizontal scroll, never wraps */}
+        <div style={{
+          display: "flex", gap: 6, marginBottom: 20,
+          flexWrap: "nowrap", overflowX: "auto",
+          WebkitOverflowScrolling: "touch", scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}>
           {PLAN_DATA.map((m) => {
             const taskPct = getMonthTaskProgress(m.month);
             const isExpanded = expandedMonth === m.month;
             return (
-              <button key={m.month} onClick={() => setExpandedMonth(isExpanded ? null : m.month)} style={{
-                flex: 1, minWidth: 80, padding: "10px 8px", borderRadius: 8, cursor: "pointer",
+              <button key={m.month} onClick={() => toggleMonth(m.month)} style={{
+                flex: "0 0 auto", minWidth: 80, padding: "10px 8px", borderRadius: 8, cursor: "pointer",
                 background: isExpanded ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.03)",
                 border: isExpanded ? "1px solid rgba(201,168,76,0.4)" : "1px solid rgba(255,255,255,0.06)",
                 transition: "all 0.2s",
@@ -405,7 +477,7 @@ export default function SprintTracker() {
             }}>
               {/* Month header bar */}
               <div
-                onClick={() => setExpandedMonth(isExpanded ? null : m.month)}
+                onClick={() => toggleMonth(m.month)}
                 style={{
                   padding: "16px 20px", cursor: "pointer",
                   display: "flex", alignItems: "center", gap: 16,

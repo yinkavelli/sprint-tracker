@@ -308,12 +308,12 @@ export function applyRevision(context, revisionText) {
   return updated;
 }
 
-// ─── plan generator (full JSON) ───────────────────────────────────────────
+// ─── plan generator — rule-based fallback (called by aiService on failure) ──
 
-export function generatePlan(context) {
+export function generatePlanFallback(context, parsedDuration) {
+  const dur = parsedDuration || parseDuration(context.duration);
   const category = classifyGoal(context.goal);
   const trackDefs = TRACK_MAP[category];
-  const dur = parseDuration(context.duration);
 
   const tracks = {
     track1: trackDefs.track1,
@@ -338,7 +338,6 @@ export function generatePlan(context) {
     });
   }
 
-  // Build initial checked map (all false)
   const checked = {};
   periods.forEach((p) => {
     ["track1", "track2", "track3"].forEach((tr) => {
@@ -348,14 +347,24 @@ export function generatePlan(context) {
     });
   });
 
-  return {
+  return { category, tracks, periods, checked };
+}
+
+// ─── plan generator — async, AI-powered (with rule-based fallback) ────────
+
+export async function generatePlan(context) {
+  const { generateSprintWithAI, mergePlanResponse } = await import("../services/aiService.js");
+  const dur = parseDuration(context.duration);
+  const category = classifyGoal(context.goal);
+
+  // Base sprint skeleton — always built from local data
+  const base = {
     id: `spr_${Date.now()}`,
     userId: context.userId,
     title: context.sprintTitle || "My Sprint",
     subtitle: context.goal,
     goal: context.goal,
     category,
-    // flexible duration fields
     unit: dur.unit,
     blockCount: dur.count,
     blockDaysEach: dur.daysPerBlock,
@@ -363,9 +372,16 @@ export function generatePlan(context) {
     blockLabel: dur.label,
     startDate: "",
     createdAt: new Date().toISOString(),
-    tracks,
-    periods,
-    checked,
+    aiGenerated: false,
+  };
+
+  // Call AI — falls back to rule-based inside aiService on failure
+  const { data: aiData, source } = await generateSprintWithAI(context, dur);
+
+  return {
+    ...base,
+    ...mergePlanResponse(base, aiData),
+    aiGenerated: source === "openai",
   };
 }
 

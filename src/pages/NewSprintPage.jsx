@@ -224,23 +224,34 @@ export default function NewSprintPage() {
     setPhase("preview");
   }
 
-  // Approve plan — generate full JSON and navigate
+  // Approve plan — generate full JSON via GPT-4o (or fallback) and navigate
   async function handleApprovePlan() {
     setPhase("building");
-    setTyping(true);
-    addAIMessage("✨ Building your full sprint plan now — this'll just take a second…");
-    await delay(1800);
-    setTyping(false);
-
-    const sprint = generatePlan({ ...context, userId: user.id });
-    saveSprint(sprint);
-    setSprintId(sprint.id);
-    setPhase("done");
-    const dur = parseDuration(context.duration);
+    const hasKey = !!import.meta.env.VITE_OPENAI_API_KEY;
     addAIMessage(
-      `🎉 Your sprint plan is live!\n\n"${sprint.title}" is a ${dur.count}-${dur.label.toLowerCase()} roadmap across 3 tracks with ${sprint.periods.length * 9} personalised tasks.\n\nLet's go! 🚀`,
-      { type: "done" }
+      hasKey
+        ? "✨ Sending your context to GPT-4o — generating a fully personalised plan just for you…"
+        : "✨ Building your sprint plan now…"
     );
+    setTyping(true);
+
+    try {
+      const sprint = await generatePlan({ ...context, userId: user.id });
+      setTyping(false);
+      saveSprint(sprint);
+      setSprintId(sprint.id);
+      setPhase("done");
+      const dur = parseDuration(context.duration);
+      const badge = sprint.aiGenerated ? "🤖 AI-generated" : "⚡ Rule-based";
+      addAIMessage(
+        `🎉 Your sprint plan is live! ${badge}\n\n"${sprint.title}" is a ${dur.count}-${dur.label.toLowerCase()} roadmap across 3 tracks with ${sprint.periods.length * 9} personalised tasks.\n\nLet's go! 🚀`,
+        { type: "done" }
+      );
+    } catch (err) {
+      setTyping(false);
+      setPhase("preview");
+      addAIMessage("⚠️ Something went wrong generating your plan. Please check your API key in .env and try again, or I'll fall back to the built-in engine.");
+    }
   }
 
   // Handle revision

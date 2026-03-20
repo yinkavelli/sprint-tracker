@@ -28,10 +28,10 @@ export default function SprintPage() {
 
   function handleReset() {
     const fresh = {};
-    sprint.months.forEach((m) => {
-      Object.keys(m.tracks).forEach((tk) => {
-        m.tracks[tk].forEach((_, idx) => {
-          fresh[`${m.month}-${tk}-${idx}`] = false;
+    sprint.periods.forEach((p) => {
+      Object.keys(p.tracks).forEach((tk) => {
+        p.tracks[tk].forEach((_, idx) => {
+          fresh[`${p.period}-${tk}-${idx}`] = false;
         });
       });
     });

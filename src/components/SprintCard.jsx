@@ -26,8 +26,9 @@ function getOverallTaskProgress(sprint) {
 
 function getDaysRemaining(sprint) {
   if (!sprint.startDate) return null;
+  const totalDays = (sprint.blockCount || 6) * (sprint.blockDaysEach || 30);
   const end = new Date(sprint.startDate);
-  end.setDate(end.getDate() + 180);
+  end.setDate(end.getDate() + totalDays);
   const diff = Math.ceil((end - new Date()) / (1000 * 60 * 60 * 24));
   return diff;
 }
@@ -42,10 +43,10 @@ export default function SprintCard({ sprint, onOpen, onDelete }) {
 
   function getTrackProgress(trackKey) {
     let total = 0, done = 0;
-    (sprint.months || []).forEach((m) => {
-      (m.tracks[trackKey] || []).forEach((_, idx) => {
+    (sprint.periods || []).forEach((p) => {
+      (p.tracks[trackKey] || []).forEach((_, idx) => {
         total++;
-        if (sprint.checked?.[`${m.month}-${trackKey}-${idx}`]) done++;
+        if (sprint.checked?.[`${p.period}-${trackKey}-${idx}`]) done++;
       });
     });
     return total > 0 ? done / total : 0;
@@ -74,7 +75,7 @@ export default function SprintCard({ sprint, onOpen, onDelete }) {
           </div>
           {sprint.category && (
             <div style={{ fontSize: 10, color: "#6a6a7a", marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              {sprint.category}
+              {sprint.blockCount && sprint.blockLabel ? `${sprint.blockCount}-${sprint.blockLabel} · ` : ""}{sprint.category}
             </div>
           )}
         </div>

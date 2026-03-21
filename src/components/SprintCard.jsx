@@ -33,7 +33,7 @@ function getDaysRemaining(sprint) {
   return diff;
 }
 
-export default function SprintCard({ sprint, onOpen, onDelete }) {
+export default function SprintCard({ sprint, onOpen, onDelete, onChat }) {
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pct = getOverallTaskProgress(sprint);
@@ -120,6 +120,19 @@ export default function SprintCard({ sprint, onOpen, onDelete }) {
         )}
 
         <div style={{ display: "flex", gap: 8 }}>
+          {onChat && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onChat(); }}
+              title="Continue building with AI"
+              style={{
+                background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.3)",
+                color: "#a855f7", padding: "5px 11px", borderRadius: 6, fontSize: 11,
+                fontWeight: 600, cursor: "pointer", transition: "all 0.2s", fontFamily: "inherit",
+                display: "flex", alignItems: "center", gap: 4,
+              }}>
+              ✦ Chat
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); onOpen(); }}
             style={{

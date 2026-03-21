@@ -114,6 +114,7 @@ export default function DashboardPage() {
               sprint={sprint}
               onOpen={() => navigate(`/sprint/${sprint.id}`)}
               onDelete={() => setDeleteTarget(sprint)}
+              onChat={() => navigate("/sprint/new", { state: { modifySprintId: sprint.id } })}
             />
           ))}
         </div>

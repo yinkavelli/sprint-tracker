@@ -143,6 +143,26 @@ export default function SprintTracker({ sprint, onCheckedChange, onStartDateChan
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(78%) sepia(30%) saturate(600%) hue-rotate(5deg); cursor: pointer; }
+        @media(max-width:600px){
+          .st-header{padding:14px 14px 14px !important;}
+          .st-title{font-size:18px !important;line-height:1.2 !important;}
+          .st-subtitle{font-size:10px !important;}
+          .st-header-btns button{padding:5px 10px !important;font-size:11px !important;}
+          .st-metrics{grid-template-columns:1fr 1fr !important;gap:8px !important;margin-top:12px !important;}
+          .st-tracks{grid-template-columns:1fr !important;gap:6px !important;margin-top:10px !important;}
+          .st-track-label{font-size:10px !important;white-space:normal !important;}
+          .st-timeline{padding:14px 12px 40px !important;}
+          .st-nav-pill{min-width:62px !important;padding:8px 6px !important;}
+          .st-nav-pill-label{font-size:10px !important;}
+          .st-nav-pill-sub{font-size:8px !important;}
+          .st-period-header{padding:12px 14px !important;gap:10px !important;}
+          .st-period-badge{width:32px !important;height:32px !important;font-size:11px !important;}
+          .st-period-title{font-size:13px !important;}
+          .st-period-sub{font-size:10px !important;}
+          .st-period-body{padding:0 12px 14px !important;}
+          .st-task{font-size:12px !important;}
+          .st-back-btn{padding:5px 10px !important;font-size:11px !important;}
+        }
       `}</style>
 
       {/* Reset confirmation */}
@@ -157,18 +177,18 @@ export default function SprintTracker({ sprint, onCheckedChange, onStartDateChan
       />
 
       {/* ── Header ── */}
-      <div style={{ background: "linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)", borderBottom: "2px solid #c9a84c", padding: "28px 24px 24px" }}>
+      <div className="st-header" style={{ background: "linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)", borderBottom: "2px solid #c9a84c", padding: "28px 24px 24px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 4 }}>
             <div>
-              <div style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", fontSize: 26, fontWeight: 700, color: "#c9a84c", lineHeight: 1.2 }}>
+              <div className="st-title" style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", fontSize: 26, fontWeight: 700, color: "#c9a84c", lineHeight: 1.2 }}>
                 {title}
               </div>
-              <div style={{ fontSize: 11, color: "#6a6a7a", marginTop: 4 }}>
+              <div className="st-subtitle" style={{ fontSize: 11, color: "#6a6a7a", marginTop: 4 }}>
                 {sprintDurationLabel} · {subtitle}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="st-header-btns" style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setShowSettings(!showSettings)} onMouseEnter={() => setBtnHover("s")} onMouseLeave={() => setBtnHover("")} style={{ background: btnHover === "s" ? "rgba(201,168,76,0.28)" : "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", color: "#c9a84c", padding: "6px 14px", borderRadius: 6, fontSize: 12, cursor: "pointer", transition: "all 0.2s", fontFamily: "inherit" }}>⚙️ Settings</button>
               <button onClick={() => setShowResetConfirm(true)} onMouseEnter={() => setBtnHover("r")} onMouseLeave={() => setBtnHover("")} style={{ background: btnHover === "r" ? "rgba(255,71,87,0.22)" : "rgba(255,71,87,0.1)", border: "1px solid rgba(255,71,87,0.35)", color: "#ff4757", padding: "6px 14px", borderRadius: 6, fontSize: 12, cursor: "pointer", transition: "all 0.2s", fontFamily: "inherit" }}>↺ Reset</button>
             </div>
@@ -184,18 +204,18 @@ export default function SprintTracker({ sprint, onCheckedChange, onStartDateChan
           )}
 
           {/* Overall progress */}
-          <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="st-metrics" style={{ marginTop: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <MetricBar label="Time elapsed" pct={overallTime} color="#ff4757" />
             <MetricBar label="Tasks completed" pct={overallTask} color="#00b894" />
           </div>
 
           {/* Track summaries */}
-          <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+          <div className="st-tracks" style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
             {Object.entries(tracks).map(([key, meta]) => {
               const pct = getTrackProgress(sprint, key);
               return (
                 <div key={key} style={{ padding: "8px 12px", borderRadius: 6, background: `${meta.color}10`, border: `1px solid ${meta.color}30`, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, color: meta.color, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div className="st-track-label" style={{ fontSize: 10, color: meta.color, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {meta.icon} {meta.label}
                   </div>
                   <div style={{ marginTop: 6, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
@@ -210,7 +230,7 @@ export default function SprintTracker({ sprint, onCheckedChange, onStartDateChan
       </div>
 
       {/* ── Timeline ── */}
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 24px 60px" }}>
+      <div className="st-timeline" style={{ maxWidth: 900, margin: "0 auto", padding: "24px 24px 60px" }}>
 
         {/* Period nav — horizontal scroll */}
         <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none" }}>
@@ -219,11 +239,11 @@ export default function SprintTracker({ sprint, onCheckedChange, onStartDateChan
             const timePct = getPeriodTimeProgress(sprint, p.period);
             const isExpanded = expandedPeriod === p.period;
             return (
-              <button key={p.period} onClick={() => togglePeriod(p.period)} style={{ flex: "0 0 auto", minWidth: 80, padding: "10px 8px", borderRadius: 8, cursor: "pointer", background: isExpanded ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.03)", border: isExpanded ? "1px solid rgba(201,168,76,0.4)" : "1px solid rgba(255,255,255,0.06)", transition: "all 0.2s", fontFamily: "inherit" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: isExpanded ? "#c9a84c" : "#8a8a9a" }}>
+              <button key={p.period} onClick={() => togglePeriod(p.period)} className="st-nav-pill" style={{ flex: "0 0 auto", minWidth: 80, padding: "10px 8px", borderRadius: 8, cursor: "pointer", background: isExpanded ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.03)", border: isExpanded ? "1px solid rgba(201,168,76,0.4)" : "1px solid rgba(255,255,255,0.06)", transition: "all 0.2s", fontFamily: "inherit" }}>
+                <div className="st-nav-pill-label" style={{ fontSize: 11, fontWeight: 700, color: isExpanded ? "#c9a84c" : "#8a8a9a" }}>
                   {blockPrefix}{p.period}
                 </div>
-                <div style={{ fontSize: 9, color: "#666", marginTop: 2, lineHeight: 1.2 }}>
+                <div className="st-nav-pill-sub" style={{ fontSize: 9, color: "#666", marginTop: 2, lineHeight: 1.2 }}>
                   {getBlockShortTitle(p)}
                 </div>
                 <div style={{ marginTop: 6, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
@@ -247,13 +267,13 @@ export default function SprintTracker({ sprint, onCheckedChange, onStartDateChan
           return (
             <div key={p.period} style={{ marginBottom: 12, borderRadius: 12, overflow: "hidden", background: isExpanded ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)", border: isExpanded ? "1px solid rgba(201,168,76,0.25)" : "1px solid rgba(255,255,255,0.05)", transition: "all 0.3s" }}>
               {/* Card header */}
-              <div onClick={() => togglePeriod(p.period)} style={{ padding: "16px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: taskPct === 1 ? "#00b894" : "linear-gradient(135deg,#1a1a2e,#0f3460)", border: taskPct === 1 ? "2px solid #00d2a0" : "2px solid #c9a84c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: taskPct === 1 ? "#fff" : "#c9a84c" }}>
+              <div onClick={() => togglePeriod(p.period)} className="st-period-header" style={{ padding: "16px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}>
+                <div className="st-period-badge" style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: taskPct === 1 ? "#00b894" : "linear-gradient(135deg,#1a1a2e,#0f3460)", border: taskPct === 1 ? "2px solid #00d2a0" : "2px solid #c9a84c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: taskPct === 1 ? "#fff" : "#c9a84c" }}>
                   {taskPct === 1 ? "✓" : `${blockPrefix}${p.period}`}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "#e8e6e1" }}>{p.title}</div>
-                  <div style={{ fontSize: 11, color: "#6a6a7a", marginTop: 2 }}>
+                  <div className="st-period-title" style={{ fontSize: 15, fontWeight: 600, color: "#e8e6e1" }}>{p.title}</div>
+                  <div className="st-period-sub" style={{ fontSize: 11, color: "#6a6a7a", marginTop: 2 }}>
                     {blockLabel} {p.period} · {p.subtitle}
                   </div>
                   <div style={{ marginTop: 8 }}>

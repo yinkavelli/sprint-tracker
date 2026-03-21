@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { saveSprint } from "../services/DataService";
+import { saveSprint, getSprintById } from "../services/DataService";
 import {
   generatePlan,
   generatePlanOutline,
@@ -16,13 +16,27 @@ import { sendChatMessage, isGPTAvailable } from "../services/aiService";
 
 const GPT_MODE = isGPTAvailable();
 
+// ─── AI avatar icon (premium gradient) ───────────────────────────────────
+
+function AIAvatar({ size = 32 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", flexShrink: 0,
+      background: "linear-gradient(135deg,#6c5ce7 0%,#a855f7 50%,#06b6d4 100%)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.45, boxShadow: "0 0 10px rgba(108,92,231,0.45)",
+      fontWeight: 700, color: "#fff", letterSpacing: -0.5,
+    }}>✦</div>
+  );
+}
+
 // ─── typing indicator ─────────────────────────────────────────────────────
 
 function TypingIndicator() {
   return (
     <div style={{ display: "flex", gap: 5, padding: "14px 16px", alignItems: "center" }}>
       {[0, 1, 2].map((i) => (
-        <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "#c9a84c", animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+        <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "#a855f7", animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
       ))}
       <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}`}</style>
     </div>
@@ -34,9 +48,7 @@ function TypingIndicator() {
 function MessageBubble({ msg, onApprovePlan, onSprintView }) {
   return (
     <div style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", gap: 12, alignItems: "flex-end" }}>
-      {msg.role === "ai" && (
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#c9a84c,#a8863e)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>🤖</div>
-      )}
+      {msg.role === "ai" && <AIAvatar size={32} />}
       <div style={{
         maxWidth: "78%", padding: "13px 16px",
         borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
@@ -83,13 +95,17 @@ function MessageBubble({ msg, onApprovePlan, onSprintView }) {
 export default function NewSprintPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Modify-mode: navigated here with an existing sprint to update
+  const modifySprintId = location.state?.modifySprintId || null;
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [phase, setPhase] = useState("chat");
   const [context, setContext] = useState({});
-  const [sprintId, setSprintId] = useState(null);
+  const [sprintId, setSprintId] = useState(modifySprintId);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [hovered, setHovered] = useState("");
@@ -123,10 +139,30 @@ export default function NewSprintPage() {
       setTyping(true);
       setTimeout(() => {
         setTyping(false);
-        if (GPT_MODE) {
-          addAIMsg(`Hey ${firstName}! 👋 I'm your GPT-4o sprint planning assistant.\n\nTell me — what's the goal you're trying to achieve? Don't hold back on the details; the more specific you are, the better your plan will be.\n\n(You can also upload a document with your goals using the 📎 button below.)`);
+        if (modifySprintId) {
+          // Modify-mode: load existing sprint context
+          const existing = getSprintById(modifySprintId);
+          if (existing) {
+            const ctx = {
+              goal: existing.subtitle || existing.title,
+              sprintTitle: existing.title,
+              duration: `${existing.blockCount} ${existing.blockLabel}s`,
+            };
+            setContext(ctx);
+            if (GPT_MODE) {
+              const initMsg = { role: "user", content: `I want to modify my existing sprint plan. Here are the details:\n\nTitle: ${existing.title}\nGoal: ${existing.subtitle || existing.title}\nDuration: ${existing.blockCount} ${existing.blockLabel}s\nTracks: ${Object.values(existing.tracks || {}).map(t => t.label).join(', ')}\n\nI want to make some changes.` };
+              setConvHistory([initMsg]);
+            }
+            addAIMsg(`Hey ${firstName}! 👋 I can see your sprint "${existing.title}".
+
+What would you like to change or enhance? You can tell me to adjust the timeline, add new focus areas, change the milestones, or completely rethink the approach.`);
+          } else {
+            addAIMsg(`Hey ${firstName}! 👋 Couldn't find that sprint — let's start fresh.\n\nWhat's the goal you'd like to achieve?`);
+          }
+        } else if (GPT_MODE) {
+          addAIMsg(`Hey ${firstName}! 👋 I'm your sprint planning assistant.\n\nWhat's the goal you're working toward? The more specific you are, the better I can tailor your plan.\n\n(You can also upload a document using the 📎 button below.)`);
         } else {
-          addAIMsg(`Hey ${firstName}! 👋 I'll guide you through building your personalised sprint plan.\n\n${QUESTIONS[0].ask}\n\n⚡ Running in rule-based mode. Add a VITE_OPENAI_API_KEY to your .env for a fully conversational GPT-4o experience.`);
+          addAIMsg(`Hey ${firstName}! 👋 I'll guide you through building your sprint plan.\n\n${QUESTIONS[0].ask}\n\n⚡ Running in rule-based mode. Add a VITE_OPENAI_API_KEY to your .env for GPT-4o.`);
         }
       }, 900);
     }, 300);
@@ -200,10 +236,14 @@ export default function NewSprintPage() {
       }
     } catch (err) {
       setUploading(false);
-      setUploadError(err.message === "UNSUPPORTED_FORMAT"
-        ? "Couldn't read that file. Please try .txt, .docx, or .pdf."
-        : "Something went wrong. You can describe your goal in the chat instead.");
       setTyping(false);
+      if (err.message === "UNSUPPORTED_FORMAT") {
+        setUploadError("Unsupported file. Please upload .txt, .md, .docx, or .pdf");
+      } else if (err.message === "PDF_PARSE_FAILED") {
+        setUploadError("PDF parsing failed. Try a .docx or .txt file, or paste the key details into the chat.");
+      } else {
+        setUploadError(err.message || "Upload failed. Try a different file format.");
+      }
     }
   }
 
@@ -368,40 +408,51 @@ export default function NewSprintPage() {
         *{box-sizing:border-box;margin:0;padding:0}
         ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
         textarea:focus{outline:none}
+        @media(max-width:600px){
+          .chat-header-inner{padding:10px 12px !important;flex-wrap:nowrap !important;}
+          .chat-back-btn{padding:5px 10px !important;font-size:11px !important;}
+          .chat-title{font-size:14px !important;}
+          .mode-badge{display:none !important;}
+          .chat-messages-wrap{padding:14px 0 !important;}
+          .chat-messages-inner{padding:0 10px !important;gap:11px !important;}
+          .chat-bubble{max-width:90% !important;padding:10px 12px !important;font-size:13px !important;}
+          .chat-input-bar{padding:10px 12px !important;gap:7px !important;}
+          .chat-input-hint{padding:4px 10px 0 !important;}
+        }
       `}</style>
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)", borderBottom: "2px solid #c9a84c", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ background: "linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)", borderBottom: "2px solid #c9a84c", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }} className="chat-header-inner">
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <button onClick={() => navigate("/dashboard")} onMouseEnter={() => setHovered("b")} onMouseLeave={() => setHovered("")} style={{ background: hovered === "b" ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#8a8a9a", padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer", transition: "all 0.2s", fontFamily: "inherit" }}>← Back</button>
+          <button onClick={() => navigate("/dashboard")} onMouseEnter={() => setHovered("b")} onMouseLeave={() => setHovered("")} className="chat-back-btn" style={{ background: hovered === "b" ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#8a8a9a", padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer", transition: "all 0.2s", fontFamily: "inherit" }}>← Back</button>
           <div>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 700, color: "#c9a84c", display: "flex", alignItems: "center", gap: 8 }}>
-              New Sprint
-              <span style={{
+            <div className="chat-title" style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 700, color: "#c9a84c", display: "flex", alignItems: "center", gap: 8 }}>
+              {modifySprintId ? "Modify Sprint" : "New Sprint"}
+              <span className="mode-badge" style={{
                 fontSize: 10, fontFamily: "'DM Sans',sans-serif", fontWeight: 600,
                 padding: "2px 9px", borderRadius: 20,
                 background: GPT_MODE ? "rgba(0,184,148,0.15)" : "rgba(255,255,255,0.06)",
                 border: `1px solid ${GPT_MODE ? "rgba(0,184,148,0.4)" : "rgba(255,255,255,0.1)"}`,
                 color: GPT_MODE ? "#00b894" : "#6a6a7a",
               }}>
-                {GPT_MODE ? "🤖 GPT-4o" : "⚡ Rule-based"}
+                {GPT_MODE ? "✦ GPT-4o" : "⚡ Rule-based"}
               </span>
             </div>
             <div style={{ fontSize: 11, color: "#6a6a7a" }}>
-              {phase === "chat" ? (GPT_MODE ? "AI conversation in progress" : "Guided setup") : phase === "preview" ? "Review your plan" : phase === "building" ? "Generating…" : "Plan ready!"}
+              {phase === "chat" ? (GPT_MODE ? "AI conversation" : "Guided setup") : phase === "preview" ? "Review your plan" : phase === "building" ? "Generating…" : "Plan ready!"}
             </div>
           </div>
         </div>
         {/* Status dot */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: phase === "done" ? "#00b894" : phase === "building" ? "#fdcb6e" : phase === "preview" ? "#c9a84c" : GPT_MODE ? "#00b894" : "#6a6a7a", boxShadow: `0 0 6px ${phase === "building" ? "#fdcb6e" : GPT_MODE ? "#00b894" : "#6a6a7a"}`, transition: "all 0.3s" }} />
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: phase === "done" ? "#00b894" : phase === "building" ? "#fdcb6e" : phase === "preview" ? "#c9a84c" : GPT_MODE ? "#a855f7" : "#6a6a7a", boxShadow: `0 0 6px ${phase === "building" ? "#fdcb6e" : GPT_MODE ? "#a855f7" : "#6a6a7a"}`, transition: "all 0.3s" }} />
           <span style={{ fontSize: 10, color: "#6a6a7a" }}>{phase === "done" ? "Complete" : phase === "building" ? "Building…" : phase === "preview" ? "Review" : "Chatting"}</span>
         </div>
       </div>
 
-      {/* Chat */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px 0" }}>
-        <div style={{ maxWidth: 700, margin: "0 auto", padding: "0 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Chat messages */}
+      <div className="chat-messages-wrap" style={{ flex: 1, overflowY: "auto", padding: "24px 0" }}>
+        <div className="chat-messages-inner" style={{ maxWidth: 700, margin: "0 auto", padding: "0 20px", display: "flex", flexDirection: "column", gap: 16 }}>
           {messages.map((msg, i) => (
             <MessageBubble
               key={i}
@@ -412,7 +463,7 @@ export default function NewSprintPage() {
           ))}
           {typing && (
             <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#c9a84c,#a8863e)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🤖</div>
+              <AIAvatar size={32} />
               <div style={{ padding: "4px 8px", borderRadius: "18px 18px 18px 4px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <TypingIndicator />
               </div>
@@ -435,7 +486,7 @@ export default function NewSprintPage() {
               ✏️ Type any changes (e.g. "make it 8 weeks", "rename it to X") — or tap <strong style={{ color: "#00b894" }}>✅ Build This Plan</strong> above.
             </div>
           )}
-          <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", gap: 10, alignItems: "flex-end" }}>
+        <div className="chat-input-bar" style={{ maxWidth: 700, margin: "0 auto", display: "flex", gap: 10, alignItems: "flex-end" }}>
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading} title="Upload goal doc (.txt, .docx, .pdf)" style={{ width: 44, height: 44, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.06)", color: "#6a6a7a", fontSize: 18, cursor: uploading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               {uploading ? "⏳" : "📎"}
             </button>

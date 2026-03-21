@@ -4,11 +4,16 @@ export function parseDuration(text) {
   if (!text) return { count: 6, unit: "month", prefix: "M", label: "Month", daysPerBlock: 30 };
   const lower = text.toLowerCase();
   const numMatch = lower.match(/(\d+)/);
-  const count = numMatch ? Math.min(parseInt(numMatch[1]), 52) : 6; // cap at 52 blocks
+  const count = numMatch ? Math.min(parseInt(numMatch[1]), 52) : 6;
 
   if (lower.includes("day")) return { count, unit: "day", prefix: "D", label: "Day", daysPerBlock: 1 };
   if (lower.includes("week")) return { count, unit: "week", prefix: "W", label: "Week", daysPerBlock: 7 };
   if (lower.includes("quarter")) return { count, unit: "quarter", prefix: "Q", label: "Quarter", daysPerBlock: 90 };
+  // "year" → convert to months (12 months per year)
+  if (lower.includes("year")) {
+    const years = numMatch ? parseInt(numMatch[1]) : 1;
+    return { count: Math.min(years * 12, 52), unit: "month", prefix: "M", label: "Month", daysPerBlock: 30 };
+  }
   return { count, unit: "month", prefix: "M", label: "Month", daysPerBlock: 30 };
 }
 
@@ -33,21 +38,32 @@ export async function parseDocumentText(file) {
   }
 
   if (ext === "pdf") {
-    const pdfjsLib = await import("pdfjs-dist");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-    let text = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items.map((item) => item.str).join(" ") + "\n";
+    try {
+      const pdfjsLib = await import("pdfjs-dist");
+      // Use Vite-bundled worker URL (no CDN dependency — works on mobile and offline)
+      const workerUrl = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).href;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      let text = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map((item) => item.str).join(" ") + "\n";
+      }
+      if (!text.trim()) throw new Error("EMPTY_PDF");
+      return text;
+    } catch (e) {
+      if (e.message === "EMPTY_PDF") throw new Error("The PDF appears to be empty or image-only. Try copying the text and pasting it in the chat.");
+      // Re-throw with a user-friendly message
+      throw new Error("PDF_PARSE_FAILED");
     }
-    return text;
   }
 
   throw new Error("UNSUPPORTED_FORMAT");
 }
+
 
 /** Attempts to extract goal / duration / title hints from raw document text */
 export function extractContextFromDoc(text) {
